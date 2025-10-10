@@ -92,6 +92,28 @@
             z-index: 10;
             font-size: 2em;
         }
+
+        /* 修改开始：为游戏结束界面添加行距样式 */
+        #game-over-screen h2 {
+            margin-bottom: 5px;
+        }
+
+        #game-over-screen p {
+            margin-top: 15px;
+            margin-bottom: 5px;
+        }
+
+        #game-over-screen button {
+            margin-top: 25px;
+        }
+
+        #game-over-screen button {
+            padding: 10px 20px;
+            font-size: 0.8em;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        /* 修改结束 */
         
         #pre-game-selection-screen {
             position: absolute;
@@ -287,13 +309,6 @@
             background-color: #45a049;
             transform: scale(1.05);
         }
-
-        #game-over-screen button {
-            padding: 10px 20px;
-            font-size: 0.8em;
-            margin-top: 20px;
-            cursor: pointer;
-        }
         
         .highlight-text {
             color: #FFD700; 
@@ -376,7 +391,7 @@
                 </div>
                 <div class="key-description">
                     <p><strong>方向键</strong></p>
-                    <p>旋转、左右移动、加速下落</p>
+                    <p>↑旋转、←/→左右移动、↓加速下落</p>
                 </div>
             </div>
         </div>
@@ -428,10 +443,14 @@
         </div>
     </div>
 
+    <!-- 修改开始：调整游戏结束界面的HTML结构 -->
     <div id="game-over-screen">
-        <span id="game-over-message">时间到! 最终得分: <span id="final-score">0</span></span>
+        <h2 id="game-over-message">时间到!</h2>
+        <p>最终得分: <span id="final-score">0</span></p>
+        <p>获得奖金: <span id="final-bonus">0</span>元</p>
         <button id="action-button">请完成后测问卷</button>
     </div>
+    <!-- 修改结束 -->
 
     <script>
         const canvas = document.getElementById('tetris-canvas');
@@ -450,9 +469,12 @@
         const eliminationInstructionScreen = document.getElementById('elimination-instruction-screen');
         const startGameBtn = document.getElementById('start-game-btn');
         const selectionInstructions = document.getElementById('selection-instructions');
-        // 新增元素
         const scoringRulesScreen = document.getElementById('scoring-rules-screen');
         const startMainGameBtn = document.getElementById('start-main-game-btn');
+
+        // 修改开始：获取显示奖金的元素
+        const finalBonusDisplay = document.getElementById('final-bonus');
+        // 修改结束
 
         const COLS = 10;
         const ROWS = 20;
@@ -677,10 +699,32 @@
             }
         }
 
+        // 修改开始：新增用于根据分数计算奖金的函数
+        function getBonus(score) {
+            if (score >= 1200) {
+                return 30;
+            } else if (score >= 600) {
+                return 26;
+            } else if (score >= 300) {
+                return 21;
+            } else if (score >= 100) {
+                return 16;
+            } else {
+                return 13;
+            }
+        }
+        // 修改结束
+
+        // 修改开始：修改endGame函数以显示奖金
         function endGame(message) {
             const finalScore = Math.floor(score);
-            gameOverScreen.style.display = 'flex';
+            const bonus = getBonus(finalScore); // 调用函数计算奖金
+
+            gameOverMessage.textContent = message;
             finalScoreDisplay.textContent = finalScore;
+            finalBonusDisplay.textContent = bonus; // 显示奖金
+            gameOverScreen.style.display = 'flex';
+
             actionButton.textContent = "时间到，请完成后续问卷";
             actionButton.onclick = () => {
                 const baseUrl = 'https://www.credamo.com/s/6ruueqano';
@@ -694,6 +738,7 @@
                 window.location.href = `${baseUrl}?${params.toString()}`;
             };
         }
+        // 修改结束
 
         function restartCurrentGame() {
             initBoard();
