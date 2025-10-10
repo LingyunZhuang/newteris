@@ -76,23 +76,39 @@
             margin: 5px 0;
         }
 
-        #game-over-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            z-index: 10;
-            font-size: 2em;
-        }
+         #game-over-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        z-index: 10;
+        font-size: 2em;
+    }
+
+    /* === 新增的样式，用于控制结束界面的行距 === */
+    #game-over-screen h2 {
+        margin-bottom: 5px;
+    }
+
+    #game-over-screen p {
+        margin-top: 15px;
+        margin-bottom: 5px;
+    }
+
+    #game-over-screen button {
+        margin-top: 25px;
+    }
         
+        
+
         #pre-game-selection-screen {
             position: absolute;
             top: 0;
@@ -436,12 +452,13 @@
                 </div>
                 <div class="key-description">
                     <p><strong>方向键</strong></p>
-                    <p>旋转、左右移动、加速下落</p>
+                    <p>↑旋转、←/→左右移动、↓加速下落</p>
                 </div>
             </div>
         </div>
         <button id="start-game-btn">我明白了，开始练习</button>
     </div>
+
 
     <!-- 新增：得分规则界面 -->
     <div id="scoring-rules-screen">
@@ -489,358 +506,383 @@
     </div>
 
     <div id="game-over-screen">
-        <span id="game-over-message">时间到! 最终得分: <span id="final-score">0</span></span>
+        <h2 id="game-over-message">时间到!</h2>
+        <p>最终得分: <span id="final-score">0</span></p>
+        <p>获得奖金: <span id="final-bonus">0</span>元</p>
         <button id="action-button">请完成后测问卷</button>
     </div>
 
-    <script>
-        const canvas = document.getElementById('tetris-canvas');
-        const ctx = canvas.getContext('2d');
-        const nextPieceCanvas = document.getElementById('next-piece-canvas');
-        const nextPieceCtx = nextPieceCanvas.getContext('2d');
-        const scoreDisplay = document.getElementById('score');
-        const timerDisplay = document.getElementById('timer');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const finalScoreDisplay = document.getElementById('final-score');
-        const gameOverMessage = document.getElementById('game-over-message');
-        const actionButton = document.getElementById('action-button');
-        const preGameSelectionScreen = document.getElementById('pre-game-selection-screen'); 
-        const modeButtons = document.querySelectorAll('.mode-btn');
-        const gameContainer = document.querySelector('.game-container');
-        const eliminationInstructionScreen = document.getElementById('elimination-instruction-screen');
-        const startGameBtn = document.getElementById('start-game-btn');
-        const confirmationDialog = document.getElementById('confirmation-dialog');
-        const confirmationMessage = document.getElementById('confirmation-message');
-        const confirmBtn = document.getElementById('confirm-btn');
-        const cancelBtn = document.getElementById('cancel-btn');
-        // 新增元素
-        const scoringRulesScreen = document.getElementById('scoring-rules-screen');
-        const startMainGameBtn = document.getElementById('start-main-game-btn');
+<script>
+    const canvas = document.getElementById('tetris-canvas');
+    const ctx = canvas.getContext('2d');
+    const nextPieceCanvas = document.getElementById('next-piece-canvas');
+    const nextPieceCtx = nextPieceCanvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+    const timerDisplay = document.getElementById('timer');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const gameOverMessage = document.getElementById('game-over-message');
+    const actionButton = document.getElementById('action-button');
+    const preGameSelectionScreen = document.getElementById('pre-game-selection-screen'); 
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    const gameContainer = document.querySelector('.game-container');
+    const eliminationInstructionScreen = document.getElementById('elimination-instruction-screen');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const confirmationDialog = document.getElementById('confirmation-dialog');
+    const confirmationMessage = document.getElementById('confirmation-message');
+    const confirmBtn = document.getElementById('confirm-btn');
+    const cancelBtn = document.getElementById('cancel-btn');
+    const scoringRulesScreen = document.getElementById('scoring-rules-screen');
+    const startMainGameBtn = document.getElementById('start-main-game-btn');
+    
+    // 1. 获取显示奖金的元素
+    const finalBonusDisplay = document.getElementById('final-bonus');
 
-        const COLS = 10;
-        const ROWS = 20;
-        const BLOCK_SIZE = canvas.width / COLS;
-        const PRACTICE_DURATION_SECONDS = 5; // 2分钟练习
-        const MAIN_GAME_DURATION_SECONDS = 10; // 10分钟正式游戏
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = canvas.width / COLS;
+    const PRACTICE_DURATION_SECONDS = 5; // 2分钟练习
+    const MAIN_GAME_DURATION_SECONDS = 10; // 10分钟正式游戏
 
-        let board = [];
-        let currentPiece;
-        let nextPiece;
-        let score = 0;
-        let gameOver = false;
-        let gameInterval;
-        let timerInterval;
-        let timeLeft;
-        let totalLinesCleared = 0;
-        let deathCount = 0;
-        let selectedInitialSpeed;
-        let selectedGameModeName;
+    let board = [];
+    let currentPiece;
+    let nextPiece;
+    let score = 0;
+    let gameOver = false;
+    let gameInterval;
+    let timerInterval;
+    let timeLeft;
+    let totalLinesCleared = 0;
+    let deathCount = 0;
+    let selectedInitialSpeed;
+    let selectedGameModeName;
 
-        const COLORS = ['#00BCD4', '#2196F3', '#FF9800', '#4CAF50', '#FFEB3B', '#9C27B0', '#F44336'];
-        const TETROMINOES = [
-            [[0, 0, 0, 0],[1, 1, 1, 1],[0, 0, 0, 0],[0, 0, 0, 0]],
-            [[1, 0, 0],[1, 1, 1],[0, 0, 0]],
-            [[0, 0, 1],[1, 1, 1],[0, 0, 0]],
-            [[1, 1],[1, 1]],
-            [[0, 1, 1],[1, 1, 0],[0, 0, 0]],
-            [[0, 1, 0],[1, 1, 1],[0, 0, 0]],
-            [[1, 1, 0],[0, 1, 1],[0, 0, 0]]
-        ];
+    const COLORS = ['#00BCD4', '#2196F3', '#FF9800', '#4CAF50', '#FFEB3B', '#9C27B0', '#F44336'];
+    const TETROMINOES = [
+        [[0, 0, 0, 0],[1, 1, 1, 1],[0, 0, 0, 0],[0, 0, 0, 0]],
+        [[1, 0, 0],[1, 1, 1],[0, 0, 0]],
+        [[0, 0, 1],[1, 1, 1],[0, 0, 0]],
+        [[1, 1],[1, 1]],
+        [[0, 1, 1],[1, 1, 0],[0, 0, 0]],
+        [[0, 1, 0],[1, 1, 1],[0, 0, 0]],
+        [[1, 1, 0],[0, 1, 1],[0, 0, 0]]
+    ];
 
-        class Piece {
-             constructor(shape, color) {
-                this.shape = shape;
-                this.color = color;
-                this.x = Math.floor(COLS / 2) - Math.ceil(shape[0].length / 2);
-                this.y = 0;
-            }
-            draw(context) {
-                context.fillStyle = this.color;
-                for (let r = 0; r < this.shape.length; r++) {
-                    for (let c = 0; c < this.shape[r].length; c++) {
-                        if (this.shape[r][c]) {
-                            const rectX = (this.x + c) * BLOCK_SIZE;
-                            const rectY = (this.y + r) * BLOCK_SIZE;
-                            const size = BLOCK_SIZE;
-                            context.fillRect(rectX, rectY, size, size);
-                            context.strokeStyle = '#333';
-                            context.strokeRect(rectX, rectY, size, size);
-                        }
+    class Piece {
+         constructor(shape, color) {
+            this.shape = shape;
+            this.color = color;
+            this.x = Math.floor(COLS / 2) - Math.ceil(shape[0].length / 2);
+            this.y = 0;
+        }
+        draw(context) {
+            context.fillStyle = this.color;
+            for (let r = 0; r < this.shape.length; r++) {
+                for (let c = 0; c < this.shape[r].length; c++) {
+                    if (this.shape[r][c]) {
+                        const rectX = (this.x + c) * BLOCK_SIZE;
+                        const rectY = (this.y + r) * BLOCK_SIZE;
+                        const size = BLOCK_SIZE;
+                        context.fillRect(rectX, rectY, size, size);
+                        context.strokeStyle = '#333';
+                        context.strokeRect(rectX, rectY, size, size);
                     }
                 }
             }
-            canMove(newX, newY, newShape) {
-                for (let r = 0; r < newShape.length; r++) {
-                    for (let c = 0; c < newShape[r].length; c++) {
-                        if (newShape[r][c]) {
-                            const boardX = newX + c;
-                            const boardY = newY + r;
-                            if (boardX < 0 || boardX >= COLS || boardY >= ROWS) return false;
-                            if (boardY < 0) continue;
-                            if (board[boardY] && board[boardY][boardX] !== 0) return false;
-                        }
+        }
+        canMove(newX, newY, newShape) {
+            for (let r = 0; r < newShape.length; r++) {
+                for (let c = 0; c < newShape[r].length; c++) {
+                    if (newShape[r][c]) {
+                        const boardX = newX + c;
+                        const boardY = newY + r;
+                        if (boardX < 0 || boardX >= COLS || boardY >= ROWS) return false;
+                        if (boardY < 0) continue;
+                        if (board[boardY] && board[boardY][boardX] !== 0) return false;
                     }
                 }
+            }
+            return true;
+        }
+        move(dx, dy) {
+            if (this.canMove(this.x + dx, this.y + dy, this.shape)) {
+                this.x += dx;
+                this.y += dy;
                 return true;
             }
-            move(dx, dy) {
-                if (this.canMove(this.x + dx, this.y + dy, this.shape)) {
-                    this.x += dx;
-                    this.y += dy;
-                    return true;
-                }
-                return false;
-            }
-            rotate() {
-                const rotatedShape = this.shape[0].map((_, colIndex) => this.shape.map(row => row[colIndex]).reverse());
-                const kickOffsets = [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: -2, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }];
-                for (const offset of kickOffsets) {
-                    if (this.canMove(this.x + offset.x, this.y + offset.y, rotatedShape)) {
-                        this.shape = rotatedShape;
-                        this.x += offset.x;
-                        this.y += offset.y;
-                        return;
-                    }
+            return false;
+        }
+        rotate() {
+            const rotatedShape = this.shape[0].map((_, colIndex) => this.shape.map(row => row[colIndex]).reverse());
+            const kickOffsets = [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: -2, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }];
+            for (const offset of kickOffsets) {
+                if (this.canMove(this.x + offset.x, this.y + offset.y, rotatedShape)) {
+                    this.shape = rotatedShape;
+                    this.x += offset.x;
+                    this.y += offset.y;
+                    return;
                 }
             }
-            lock() {
-                for (let r = 0; r < this.shape.length; r++) {
-                    for (let c = 0; c < this.shape[r].length; c++) {
-                        if (this.shape[r][c]) {
-                            if (this.y + r < 0) {
-                                gameOver = true;
-                                return;
-                            }
-                            board[this.y + r][this.x + c] = COLORS.indexOf(this.color) + 1;
+        }
+        lock() {
+            for (let r = 0; r < this.shape.length; r++) {
+                for (let c = 0; c < this.shape[r].length; c++) {
+                    if (this.shape[r][c]) {
+                        if (this.y + r < 0) {
+                            gameOver = true;
+                            return;
                         }
+                        board[this.y + r][this.x + c] = COLORS.indexOf(this.color) + 1;
                     }
                 }
             }
         }
+    }
 
-        function initBoard() {
-            board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-            gameOver = false;
-        }
+    function initBoard() {
+        board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        gameOver = false;
+    }
 
-        function getRandomPiece() {
-            const typeId = Math.floor(Math.random() * TETROMINOES.length);
-            return new Piece(TETROMINOES[typeId], COLORS[typeId]);
-        }
+    function getRandomPiece() {
+        const typeId = Math.floor(Math.random() * TETROMINOES.length);
+        return new Piece(TETROMINOES[typeId], COLORS[typeId]);
+    }
 
-        function drawBoard() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS; c++) {
-                    if (board[r][c] !== 0) {
-                        ctx.fillStyle = COLORS[board[r][c] - 1];
-                        ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                        ctx.strokeStyle = '#333';
-                        ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-                    }
+    function drawBoard() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (board[r][c] !== 0) {
+                    ctx.fillStyle = COLORS[board[r][c] - 1];
+                    ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
                 }
             }
         }
-        
-        function drawNextPiece() {
-            nextPieceCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
-            if (!nextPiece) return;
-            const shape = nextPiece.shape;
-            const pieceCols = shape[0].length;
-            const pieceRows = shape.length;
-            const blockSize = Math.min(nextPieceCanvas.width / pieceCols, nextPieceCanvas.height / pieceRows) * 0.8;
-            const startX = (nextPieceCanvas.width - pieceCols * blockSize) / 2;
-            const startY = (nextPieceCanvas.height - pieceRows * blockSize) / 2;
-            nextPieceCtx.fillStyle = nextPiece.color;
-            for (let r = 0; r < pieceRows; r++) {
-                for (let c = 0; c < pieceCols; c++) {
-                    if (shape[r][c]) {
-                        nextPieceCtx.fillRect(startX + c * blockSize, startY + r * blockSize, blockSize, blockSize);
-                        nextPieceCtx.strokeStyle = '#333';
-                        nextPieceCtx.strokeRect(startX + c * blockSize, startY + r * blockSize, blockSize, blockSize);
-                    }
+    }
+    
+    function drawNextPiece() {
+        nextPieceCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
+        if (!nextPiece) return;
+        const shape = nextPiece.shape;
+        const pieceCols = shape[0].length;
+        const pieceRows = shape.length;
+        const blockSize = Math.min(nextPieceCanvas.width / pieceCols, nextPieceCanvas.height / pieceRows) * 0.8;
+        const startX = (nextPieceCanvas.width - pieceCols * blockSize) / 2;
+        const startY = (nextPieceCanvas.height - pieceRows * blockSize) / 2;
+        nextPieceCtx.fillStyle = nextPiece.color;
+        for (let r = 0; r < pieceRows; r++) {
+            for (let c = 0; c < pieceCols; c++) {
+                if (shape[r][c]) {
+                    nextPieceCtx.fillRect(startX + c * blockSize, startY + r * blockSize, blockSize, blockSize);
+                    nextPieceCtx.strokeStyle = '#333';
+                    nextPieceCtx.strokeRect(startX + c * blockSize, startY + r * blockSize, blockSize, blockSize);
                 }
             }
         }
+    }
 
-        function draw() {
-            drawBoard();
-            if (currentPiece) currentPiece.draw(ctx);
-            drawNextPiece();
-        }
+    function draw() {
+        drawBoard();
+        if (currentPiece) currentPiece.draw(ctx);
+        drawNextPiece();
+    }
 
-        function drop() {
-            if (gameOver && timeLeft <= 0) return;
-            if (!currentPiece.move(0, 1)) {
-                currentPiece.lock();
-                if (gameOver) {
+    function drop() {
+        if (gameOver && timeLeft <= 0) return;
+        if (!currentPiece.move(0, 1)) {
+            currentPiece.lock();
+            if (gameOver) {
+                score = Math.max(0, score * 0.8);
+                scoreDisplay.textContent = Math.floor(score);
+                deathCount++;
+                if (timeLeft > 0) {
+                    restartCurrentGame();
+                }
+                return;
+            }
+            checkLines();
+            currentPiece = nextPiece;
+            nextPiece = getRandomPiece();
+            if (!currentPiece.canMove(currentPiece.x, currentPiece.y, currentPiece.shape)) {
+                if (timeLeft > 0) {
                     score = Math.max(0, score * 0.8);
                     scoreDisplay.textContent = Math.floor(score);
                     deathCount++;
-                    if (timeLeft > 0) {
-                        restartCurrentGame();
-                    }
-                    return;
-                }
-                checkLines();
-                currentPiece = nextPiece;
-                nextPiece = getRandomPiece();
-                if (!currentPiece.canMove(currentPiece.x, currentPiece.y, currentPiece.shape)) {
-                    if (timeLeft > 0) {
-                        score = Math.max(0, score * 0.8);
-                        scoreDisplay.textContent = Math.floor(score);
-                        deathCount++;
-                        restartCurrentGame();
-                    } else {
-                        gameOver = true;
-                    }
-                    return;
-                }
-            }
-            draw();
-        }
-
-        function checkLines() {
-            let linesCleared = 0;
-            for (let r = ROWS - 1; r >= 0; ) {
-                if (board[r].every(cell => cell !== 0)) {
-                    linesCleared++;
-                    board.splice(r, 1);
-                    board.unshift(Array(COLS).fill(0));
-                } else {
-                    r--;
-                }
-            }
-            if (linesCleared > 0) {
-                score += linesCleared * 100;
-                totalLinesCleared += linesCleared;
-                scoreDisplay.textContent = Math.floor(score);
-            }
-        }
-
-        function updateTimerDisplay() {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        function gameTimer(isPractice) {
-            timeLeft--;
-            updateTimerDisplay();
-            if (timeLeft <= 0) {
-                clearInterval(gameInterval);
-                clearInterval(timerInterval);
-                if (isPractice) {
-                    gameContainer.style.display = 'none';
-                    scoringRulesScreen.style.display = 'flex';
+                    restartCurrentGame();
                 } else {
                     gameOver = true;
-                    endGame("时间到！");
                 }
+                return;
             }
         }
+        draw();
+    }
 
-        function endGame(message) {
-            const finalScore = Math.floor(score);
-            gameOverScreen.style.display = 'flex';
-            finalScoreDisplay.textContent = finalScore;
-            actionButton.textContent = "时间到，请完成后续问卷";
-            actionButton.onclick = () => {
-                const baseUrl = 'https://www.credamo.com/s/6ruueqano';
-                const params = new URLSearchParams({
-                     id: 'AU_EM',
-                    mode: selectedGameModeName,
-                    lines: totalLinesCleared,
-                    score: finalScore,
-                    deaths: deathCount
-                });
-                window.location.href = `${baseUrl}?${params.toString()}`;
-            };
-        }
-
-        function restartCurrentGame() {
-            initBoard();
-            currentPiece = getRandomPiece();
-            nextPiece = getRandomPiece();
-            draw();
-        }
-
-        document.addEventListener('keydown', e => {
-            if (!currentPiece || (gameOver && timeLeft <= 0)) return;
-            switch (e.code) {
-                case 'ArrowLeft': currentPiece.move(-1, 0); break;
-                case 'ArrowRight': currentPiece.move(1, 0); break;
-                case 'ArrowDown': drop(); break;
-                case 'ArrowUp': currentPiece.rotate(); break;
+    function checkLines() {
+        let linesCleared = 0;
+        for (let r = ROWS - 1; r >= 0; ) {
+            if (board[r].every(cell => cell !== 0)) {
+                linesCleared++;
+                board.splice(r, 1);
+                board.unshift(Array(COLS).fill(0));
+            } else {
+                r--;
             }
-            draw();
-        });
-
-        function startRound(initialSpeed, duration, isPractice) {
-            initBoard();
-            if(!isPractice) {
-                score = 0;
-                totalLinesCleared = 0;
-                deathCount = 0;
-                scoreDisplay.textContent = score;
-            }
-            currentPiece = getRandomPiece();
-            nextPiece = getRandomPiece();
-            draw();
-            
-            if (gameInterval) clearInterval(gameInterval);
-            if (timerInterval) clearInterval(timerInterval);
-
-            gameInterval = setInterval(drop, initialSpeed);
-            
-            timeLeft = duration;
-            updateTimerDisplay();
-            timerInterval = setInterval(() => gameTimer(isPractice), 1000);
         }
+        if (linesCleared > 0) {
+            score += linesCleared * 100;
+            totalLinesCleared += linesCleared;
+            scoreDisplay.textContent = Math.floor(score);
+        }
+    }
 
-        function initializeGame() {
-            preGameSelectionScreen.style.display = 'flex';
-            gameContainer.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            eliminationInstructionScreen.style.display = 'none';
-            confirmationDialog.style.display = 'none';
-            scoringRulesScreen.style.display = 'none'; // 隐藏得分规则界面
+    function updateTimerDisplay() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function gameTimer(isPractice) {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
             clearInterval(gameInterval);
             clearInterval(timerInterval);
+            if (isPractice) {
+                gameContainer.style.display = 'none';
+                scoringRulesScreen.style.display = 'flex';
+            } else {
+                gameOver = true;
+                endGame("时间到！");
+            }
         }
-        
-        modeButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                selectedInitialSpeed = parseInt(button.dataset.speed, 10);
-                selectedGameModeName = button.textContent;
-                confirmationMessage.textContent = `你已选择“${selectedGameModeName}”。这个决定将直接影响你的任务体验，确认后无法更改。你确定吗？`;
-                confirmationDialog.style.display = 'flex';
+    }
+
+    // 2. 新增的 getBonus 函数
+    function getBonus(score) {
+        if (score >= 1200) {
+            return 30;
+        } else if (score >= 600) {
+            return 26;
+        } else if (score >= 300) {
+            return 21;
+        } else if (score >= 100) {
+            return 16;
+        } else {
+            return 13;
+        }
+    }
+
+    // 3. 修改后的 endGame 函数
+    function endGame(message) {
+        const finalScore = Math.floor(score);
+        const bonus = getBonus(finalScore); // 调用函数计算奖金
+
+        gameOverMessage.textContent = message; // 设置 "时间到！"
+        finalScoreDisplay.textContent = finalScore; // 设置最终得分
+        finalBonusDisplay.textContent = bonus; // 设置最终奖金
+        gameOverScreen.style.display = 'flex'; // 显示整个结束界面
+
+        actionButton.textContent = "时间到，请完成后续问卷";
+        actionButton.onclick = () => {
+            const baseUrl = 'https://www.credamo.com/s/6ruueqano';
+            const params = new URLSearchParams({
+                 id: 'AU_EM',
+                mode: selectedGameModeName,
+                lines: totalLinesCleared,
+                score: finalScore,
+                deaths: deathCount
             });
-        });
-        
-        confirmBtn.addEventListener('click', () => {
-            confirmationDialog.style.display = 'none';
-            preGameSelectionScreen.style.display = 'none';
-            eliminationInstructionScreen.style.display = 'flex';
-        });
+            window.location.href = `${baseUrl}?${params.toString()}`;
+        };
+    }
 
-        cancelBtn.addEventListener('click', () => {
-            confirmationDialog.style.display = 'none';
-        });
+    function restartCurrentGame() {
+        initBoard();
+        currentPiece = getRandomPiece();
+        nextPiece = getRandomPiece();
+        draw();
+    }
 
-        startGameBtn.addEventListener('click', () => {
-            eliminationInstructionScreen.style.display = 'none';
-            gameContainer.style.display = 'flex';
-            startRound(selectedInitialSpeed, PRACTICE_DURATION_SECONDS, true);
-        });
+    document.addEventListener('keydown', e => {
+        if (!currentPiece || (gameOver && timeLeft <= 0)) return;
+        switch (e.code) {
+            case 'ArrowLeft': currentPiece.move(-1, 0); break;
+            case 'ArrowRight': currentPiece.move(1, 0); break;
+            case 'ArrowDown': drop(); break;
+            case 'ArrowUp': currentPiece.rotate(); break;
+        }
+        draw();
+    });
+
+    function startRound(initialSpeed, duration, isPractice) {
+        initBoard();
+        if(!isPractice) {
+            score = 0;
+            totalLinesCleared = 0;
+            deathCount = 0;
+            scoreDisplay.textContent = score;
+        }
+        currentPiece = getRandomPiece();
+        nextPiece = getRandomPiece();
+        draw();
         
-        startMainGameBtn.addEventListener('click', () => {
-            scoringRulesScreen.style.display = 'none';
-            gameContainer.style.display = 'flex';
-            startRound(selectedInitialSpeed, MAIN_GAME_DURATION_SECONDS, false);
-        });
+        if (gameInterval) clearInterval(gameInterval);
+        if (timerInterval) clearInterval(timerInterval);
+
+        gameInterval = setInterval(drop, initialSpeed);
         
-        initializeGame();
-    </script>
+        timeLeft = duration;
+        updateTimerDisplay();
+        timerInterval = setInterval(() => gameTimer(isPractice), 1000);
+    }
+
+    function initializeGame() {
+        preGameSelectionScreen.style.display = 'flex';
+        gameContainer.style.display = 'none';
+        gameOverScreen.style.display = 'none';
+        eliminationInstructionScreen.style.display = 'none';
+        confirmationDialog.style.display = 'none';
+        scoringRulesScreen.style.display = 'none'; // 隐藏得分规则界面
+        clearInterval(gameInterval);
+        clearInterval(timerInterval);
+    }
+    
+    modeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            selectedInitialSpeed = parseInt(button.dataset.speed, 10);
+            selectedGameModeName = button.textContent;
+            confirmationMessage.textContent = `你已选择“${selectedGameModeName}”。这个决定将直接影响你的任务体验，确认后无法更改。你确定吗？`;
+            confirmationDialog.style.display = 'flex';
+        });
+    });
+    
+    confirmBtn.addEventListener('click', () => {
+        confirmationDialog.style.display = 'none';
+        preGameSelectionScreen.style.display = 'none';
+        eliminationInstructionScreen.style.display = 'flex';
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        confirmationDialog.style.display = 'none';
+    });
+
+    startGameBtn.addEventListener('click', () => {
+        eliminationInstructionScreen.style.display = 'none';
+        gameContainer.style.display = 'flex';
+        startRound(selectedInitialSpeed, PRACTICE_DURATION_SECONDS, true);
+    });
+    
+    startMainGameBtn.addEventListener('click', () => {
+        scoringRulesScreen.style.display = 'none';
+        gameContainer.style.display = 'flex';
+        startRound(selectedInitialSpeed, MAIN_GAME_DURATION_SECONDS, false);
+    });
+    
+    initializeGame();
+</script>
 </body>
 </html>
