@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>俄罗斯方块</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            overflow: hidden;
+            background-image: url('https://source.unsplash.com/random/1600x900/?nature,water');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .game-container {
+            display: none;
+            background-color: #fff;
+            border: 2px solid #333;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #tetris-canvas {
+            background-color: #eee;
+            border-right: 2px solid #333;
+        }
+
+        .info-panel {
+            width: 150px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .info-panel h2 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .score-display, .next-piece-display, .timer-display {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        #score {
+            font-weight: bold;
+            color: #007bff;
+            font-size: 1.5em;
+        }
+
+        #timer {
+            font-weight: bold;
+            color: #dc3545;
+            font-size: 1.5em;
+        }
+
+        .controls {
+            margin-top: auto;
+            text-align: left;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .controls p {
+            margin: 5px 0;
+        }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            font-size: 2em;
+        }
+        
+        #pre-game-selection-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px); 
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 20;
+            font-size: 1.2em; 
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7); 
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        #pre-game-selection-screen h1 {
+            font-size: 3.5em;
+            margin-bottom: 25px;
+            letter-spacing: 4px;
+        }
+
+        #pre-game-selection-screen p {
+            max-width: 650px;
+            line-height: 1.8;
+            font-size: 1.1em;
+            color: #ddd;
+            margin-bottom: 40px;
+        }
+
+        .highlight-text {
+            color: #FFD700;
+            font-weight: 600;
+        }
+
+        .mode-buttons {
+            margin-top: 25px;
+        }
+
+        .mode-btn {
+            padding: 15px 30px;
+            font-size: 1em;
+            margin: 0 15px;
+            cursor: pointer;
+            border: 2px solid white;
+            background-color: transparent;
+            color: white;
+            transition: background-color 0.3s, color 0.3s, transform 0.2s;
+            border-radius: 8px; 
+            position: relative;
+        }
+        
+        .mode-btn::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            width: 240px;
+            text-align: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            pointer-events: none;
+        }
+
+        .mode-btn:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .mode-btn:hover {
+            background-color: white;
+            color: black;
+            transform: scale(1.05);
+        }
+        
+        #elimination-instruction-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 15;
+            font-size: 1.2em;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #elimination-instruction-screen h1 {
+            font-size: 2.8em;
+            margin-bottom: 20px;
+        }
+
+        .controls-guide {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            border: 2px solid white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+            background-color: rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 550px;
+        }
+
+        .key-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .arrow-keys {
+            display: grid;
+            grid-template-areas:
+                ". up ."
+                "left down right";
+            gap: 5px;
+        }
+
+        .key {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 45px;
+            height: 45px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+            color: #333;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0 2px 2px rgba(0, 0, 0, 0.3);
+            text-shadow: none;
+        }
+
+        #key-up { grid-area: up; }
+        #key-left { grid-area: left; }
+        #key-down { grid-area: down; }
+        #key-right { grid-area: right; }
+
+        .key-description {
+            font-size: 1.1em;
+            text-align: left;
+        }
+
+        #start-game-btn, #start-main-game-btn {
+            padding: 15px 30px;
+            font-size: 1em;
+            cursor: pointer;
+            border: 2px solid white;
+            background-color: #4CAF50;
+            color: white;
+            transition: background-color 0.3s, transform 0.2s;
+            border-radius: 8px; 
+        }
+
+        #start-game-btn:hover, #start-main-game-btn:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        #game-over-screen button {
+            padding: 10px 20px;
+            font-size: 0.8em;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
+        #confirmation-dialog {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 25;
+        }
+        
+        .dialog-content {
+            background-color: rgba(40, 40, 40, 0.85);
+            padding: 30px 40px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+            max-width: 500px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+        
+        .dialog-content p {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        
+        .dialog-buttons button {
+            padding: 12px 25px;
+            font-size: 1em;
+            margin: 0 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        
+        #confirm-btn {
+            background-color: #28a745;
+            color: white;
+        }
+
+        #confirm-btn:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+        
+        #cancel-btn {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        #cancel-btn:hover {
+            background-color: #c82333;
+            transform: scale(1.05);
+        }
+        
+        /* 新增得分规则界面样式 */
+        #scoring-rules-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 12;
+            font-size: 1.2em;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .rules-content {
+            max-width: 600px;
+            line-height: 1.0;
+        }
+
+        .rules-content h1 {
+            font-size: 2.8em;
+            margin-bottom: 30px;
+        }
+        
+        .rules-content p {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+
+        .rules-content ul {
+            list-style: none;
+            padding: 0;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            display: inline-block;
+            text-align: left;
+        }
+        
+        .rules-content ul li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="pre-game-selection-screen">
+        <h1>游戏模式选择</h1>
+        <p>
+            你好！作为本次实验的主持人，我希望你能获得<span class="highlight-text">最佳的游戏体验</span>。我们知道，不同的人有不同的游戏偏好，为了让你能以<span class="highlight-text">最适合自己的方式</span>体验游戏，我将<span class="highlight-text">选择权完全交给你</span>。请根据你的个人风格，从以下三种类型中<span class="highlight-text">选择你认为最能发挥你优势的游戏</span>，然后点击开始。
+        </p>
+        <div class="mode-buttons">
+            <button class="mode-btn" data-speed="120" data-tooltip="主要锻炼逻辑思维、观察力和耐心">敏捷挑战</button>
+            <button class="mode-btn" data-speed="120" data-tooltip="主要锻炼反应速度、注意力和肌肉记忆">策略大师</button>
+            <button class="mode-btn" data-speed="120" data-tooltip="主要锻炼分析能力、策略运用能力">益智闯关</button>
+        </div>
+    </div>
+    
+    <div id="confirmation-dialog">
+        <div class="dialog-content">
+            <p id="confirmation-message"></p>
+            <div class="dialog-buttons">
+                <button id="confirm-btn">确认</button>
+                <button id="cancel-btn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="elimination-instruction-screen">
+        <h1>俄罗斯方块游戏操作指南</h1>
+        <div class="controls-guide">
+            <div class="key-group">
+                <div class="arrow-keys">
+                    <div id="key-up" class="key">↑</div>
+                    <div id="key-left" class="key">←</div>
+                    <div id="key-down" class="key">↓</div>
+                    <div id="key-right" class="key">→</div>
+                </div>
+                <div class="key-description">
+                    <p><strong>方向键</strong></p>
+                    <p>旋转、左右移动、加速下落</p>
+                </div>
+            </div>
+        </div>
+        <button id="start-game-btn">我明白了，开始练习</button>
+    </div>
+
+    <!-- 新增：得分规则界面 -->
+    <div id="scoring-rules-screen">
+        <div class="rules-content">
+            <h1>得分规则说明</h1>
+            <p>练习阶段结束，接下来是10分钟<span class="highlight-text">正式游戏阶段</span></p>
+            <p>在俄罗斯方块游戏中，每消除1行得100分</p>
+            <p><strong>奖金说明：</strong>您的<span class="highlight-text">最终报酬与最终游戏得分有关</span>，规则如下：</p>
+            <ul>
+                <li>0-99 分：13元</li>
+                <li>100-299分：16元</li>
+                <li>300-599分：21元</li>
+                <li>600-1199分：26元</li>
+                <li>1200及以上：30元</li>
+            </ul>
+            <p>PS：由于credamo问卷的限制，最终报酬的一部分将通过追踪问卷形式精准为您发放。</p>
+        </div>
+        <button id="start-main-game-btn">我明白了，开始游戏</button>
+    </div>
+
+    <div class="game-container">
+        <canvas id="tetris-canvas" width="300" height="600"></canvas>
+        <div class="info-panel">
+            <div>
+                <h2>俄罗斯方块</h2>
+                <div class="score-display">
+                    分数: <span id="score">0</span>
+                </div>
+                <div class="timer-display">
+                    时间: <span id="timer">10:00</span>
+                </div>
+                <div class="next-piece-display">
+                    下一个:
+                    <canvas id="next-piece-canvas" width="100" height="100"></canvas>
+                </div>
+            </div>
+            <div>
+                <div class="controls">
+                    <p>←/→: 移动</p>
+                    <p>↑: 旋转</p>
+                    <p>↓: 加速</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-screen">
+        <span id="game-over-message">时间到! 最终得分: <span id="final-score">0</span></span>
+        <button id="action-button">请完成后测问卷</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('tetris-canvas');
+        const ctx = canvas.getContext('2d');
+        const nextPieceCanvas = document.getElementById('next-piece-canvas');
+        const nextPieceCtx = nextPieceCanvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const actionButton = document.getElementById('action-button');
+        const preGameSelectionScreen = document.getElementById('pre-game-selection-screen'); 
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        const gameContainer = document.querySelector('.game-container');
+        const eliminationInstructionScreen = document.getElementById('elimination-instruction-screen');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const confirmationDialog = document.getElementById('confirmation-dialog');
+        const confirmationMessage = document.getElementById('confirmation-message');
+        const confirmBtn = document.getElementById('confirm-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        // 新增元素
+        const scoringRulesScreen = document.getElementById('scoring-rules-screen');
+        const startMainGameBtn = document.getElementById('start-main-game-btn');
+
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = canvas.width / COLS;
+        const PRACTICE_DURATION_SECONDS = 5; // 2分钟练习
+        const MAIN_GAME_DURATION_SECONDS = 10; // 10分钟正式游戏
+
+        let board = [];
+        let currentPiece;
+        let nextPiece;
+        let score = 0;
+        let gameOver = false;
+        let gameInterval;
+        let timerInterval;
+        let timeLeft;
+        let totalLinesCleared = 0;
+        let deathCount = 0;
+        let selectedInitialSpeed;
+        let selectedGameModeName;
+
+        const COLORS = ['#00BCD4', '#2196F3', '#FF9800', '#4CAF50', '#FFEB3B', '#9C27B0', '#F44336'];
+        const TETROMINOES = [
+            [[0, 0, 0, 0],[1, 1, 1, 1],[0, 0, 0, 0],[0, 0, 0, 0]],
+            [[1, 0, 0],[1, 1, 1],[0, 0, 0]],
+            [[0, 0, 1],[1, 1, 1],[0, 0, 0]],
+            [[1, 1],[1, 1]],
+            [[0, 1, 1],[1, 1, 0],[0, 0, 0]],
+            [[0, 1, 0],[1, 1, 1],[0, 0, 0]],
+            [[1, 1, 0],[0, 1, 1],[0, 0, 0]]
+        ];
+
+        class Piece {
+             constructor(shape, color) {
+                this.shape = shape;
+                this.color = color;
+                this.x = Math.floor(COLS / 2) - Math.ceil(shape[0].length / 2);
+                this.y = 0;
+            }
+            draw(context) {
+                context.fillStyle = this.color;
+                for (let r = 0; r < this.shape.length; r++) {
+                    for (let c = 0; c < this.shape[r].length; c++) {
+                        if (this.shape[r][c]) {
+                            const rectX = (this.x + c) * BLOCK_SIZE;
+                            const rectY = (this.y + r) * BLOCK_SIZE;
+                            const size = BLOCK_SIZE;
+                            context.fillRect(rectX, rectY, size, size);
+                            context.strokeStyle = '#333';
+                            context.strokeRect(rectX, rectY, size, size);
+                        }
+                    }
+                }
+            }
+            canMove(newX, newY, newShape) {
+                for (let r = 0; r < newShape.length; r++) {
+                    for (let c = 0; c < newShape[r].length; c++) {
+                        if (newShape[r][c]) {
+                            const boardX = newX + c;
+                            const boardY = newY + r;
+                            if (boardX < 0 || boardX >= COLS || boardY >= ROWS) return false;
+                            if (boardY < 0) continue;
+                            if (board[boardY] && board[boardY][boardX] !== 0) return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            move(dx, dy) {
+                if (this.canMove(this.x + dx, this.y + dy, this.shape)) {
+                    this.x += dx;
+                    this.y += dy;
+                    return true;
+                }
+                return false;
+            }
+            rotate() {
+                const rotatedShape = this.shape[0].map((_, colIndex) => this.shape.map(row => row[colIndex]).reverse());
+                const kickOffsets = [{ x: 0, y: 0 }, { x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: -2, y: 0 }, { x: 2, y: 0 }, { x: 0, y: 1 }];
+                for (const offset of kickOffsets) {
+                    if (this.canMove(this.x + offset.x, this.y + offset.y, rotatedShape)) {
+                        this.shape = rotatedShape;
+                        this.x += offset.x;
+                        this.y += offset.y;
+                        return;
+                    }
+                }
+            }
+            lock() {
+                for (let r = 0; r < this.shape.length; r++) {
+                    for (let c = 0; c < this.shape[r].length; c++) {
+                        if (this.shape[r][c]) {
+                            if (this.y + r < 0) {
+                                gameOver = true;
+                                return;
+                            }
+                            board[this.y + r][this.x + c] = COLORS.indexOf(this.color) + 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        function initBoard() {
+            board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            gameOver = false;
+        }
+
+        function getRandomPiece() {
+            const typeId = Math.floor(Math.random() * TETROMINOES.length);
+            return new Piece(TETROMINOES[typeId], COLORS[typeId]);
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c] !== 0) {
+                        ctx.fillStyle = COLORS[board[r][c] - 1];
+                        ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        ctx.strokeStyle = '#333';
+                        ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                }
+            }
+        }
+        
+        function drawNextPiece() {
+            nextPieceCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
+            if (!nextPiece) return;
+            const shape = nextPiece.shape;
+            const pieceCols = shape[0].length;
+            const pieceRows = shape.length;
+            const blockSize = Math.min(nextPieceCanvas.width / pieceCols, nextPieceCanvas.height / pieceRows) * 0.8;
+            const startX = (nextPieceCanvas.width - pieceCols * blockSize) / 2;
+            const startY = (nextPieceCanvas.height - pieceRows * blockSize) / 2;
+            nextPieceCtx.fillStyle = nextPiece.color;
+            for (let r = 0; r < pieceRows; r++) {
+                for (let c = 0; c < pieceCols; c++) {
+                    if (shape[r][c]) {
+                        nextPieceCtx.fillRect(startX + c * blockSize, startY + r * blockSize, blockSize, blockSize);
+                        nextPieceCtx.strokeStyle = '#333';
+                        nextPieceCtx.strokeRect(startX + c * blockSize, startY + r * blockSize, blockSize, blockSize);
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            drawBoard();
+            if (currentPiece) currentPiece.draw(ctx);
+            drawNextPiece();
+        }
+
+        function drop() {
+            if (gameOver && timeLeft <= 0) return;
+            if (!currentPiece.move(0, 1)) {
+                currentPiece.lock();
+                if (gameOver) {
+                    score = Math.max(0, score * 0.8);
+                    scoreDisplay.textContent = Math.floor(score);
+                    deathCount++;
+                    if (timeLeft > 0) {
+                        restartCurrentGame();
+                    }
+                    return;
+                }
+                checkLines();
+                currentPiece = nextPiece;
+                nextPiece = getRandomPiece();
+                if (!currentPiece.canMove(currentPiece.x, currentPiece.y, currentPiece.shape)) {
+                    if (timeLeft > 0) {
+                        score = Math.max(0, score * 0.8);
+                        scoreDisplay.textContent = Math.floor(score);
+                        deathCount++;
+                        restartCurrentGame();
+                    } else {
+                        gameOver = true;
+                    }
+                    return;
+                }
+            }
+            draw();
+        }
+
+        function checkLines() {
+            let linesCleared = 0;
+            for (let r = ROWS - 1; r >= 0; ) {
+                if (board[r].every(cell => cell !== 0)) {
+                    linesCleared++;
+                    board.splice(r, 1);
+                    board.unshift(Array(COLS).fill(0));
+                } else {
+                    r--;
+                }
+            }
+            if (linesCleared > 0) {
+                score += linesCleared * 100;
+                totalLinesCleared += linesCleared;
+                scoreDisplay.textContent = Math.floor(score);
+            }
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function gameTimer(isPractice) {
+            timeLeft--;
+            updateTimerDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(gameInterval);
+                clearInterval(timerInterval);
+                if (isPractice) {
+                    gameContainer.style.display = 'none';
+                    scoringRulesScreen.style.display = 'flex';
+                } else {
+                    gameOver = true;
+                    endGame("时间到！");
+                }
+            }
+        }
+
+        function endGame(message) {
+            const finalScore = Math.floor(score);
+            gameOverScreen.style.display = 'flex';
+            finalScoreDisplay.textContent = finalScore;
+            actionButton.textContent = "时间到，请完成后续问卷";
+            actionButton.onclick = () => {
+                const baseUrl = 'https://www.credamo.com/s/6ruueqano';
+                const params = new URLSearchParams({
+                     id: 'AU_EM',
+                    mode: selectedGameModeName,
+                    lines: totalLinesCleared,
+                    score: finalScore,
+                    deaths: deathCount
+                });
+                window.location.href = `${baseUrl}?${params.toString()}`;
+            };
+        }
+
+        function restartCurrentGame() {
+            initBoard();
+            currentPiece = getRandomPiece();
+            nextPiece = getRandomPiece();
+            draw();
+        }
+
+        document.addEventListener('keydown', e => {
+            if (!currentPiece || (gameOver && timeLeft <= 0)) return;
+            switch (e.code) {
+                case 'ArrowLeft': currentPiece.move(-1, 0); break;
+                case 'ArrowRight': currentPiece.move(1, 0); break;
+                case 'ArrowDown': drop(); break;
+                case 'ArrowUp': currentPiece.rotate(); break;
+            }
+            draw();
+        });
+
+        function startRound(initialSpeed, duration, isPractice) {
+            initBoard();
+            if(!isPractice) {
+                score = 0;
+                totalLinesCleared = 0;
+                deathCount = 0;
+                scoreDisplay.textContent = score;
+            }
+            currentPiece = getRandomPiece();
+            nextPiece = getRandomPiece();
+            draw();
+            
+            if (gameInterval) clearInterval(gameInterval);
+            if (timerInterval) clearInterval(timerInterval);
+
+            gameInterval = setInterval(drop, initialSpeed);
+            
+            timeLeft = duration;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => gameTimer(isPractice), 1000);
+        }
+
+        function initializeGame() {
+            preGameSelectionScreen.style.display = 'flex';
+            gameContainer.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            eliminationInstructionScreen.style.display = 'none';
+            confirmationDialog.style.display = 'none';
+            scoringRulesScreen.style.display = 'none'; // 隐藏得分规则界面
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+        }
+        
+        modeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                selectedInitialSpeed = parseInt(button.dataset.speed, 10);
+                selectedGameModeName = button.textContent;
+                confirmationMessage.textContent = `你已选择“${selectedGameModeName}”。这个决定将直接影响你的任务体验，确认后无法更改。你确定吗？`;
+                confirmationDialog.style.display = 'flex';
+            });
+        });
+        
+        confirmBtn.addEventListener('click', () => {
+            confirmationDialog.style.display = 'none';
+            preGameSelectionScreen.style.display = 'none';
+            eliminationInstructionScreen.style.display = 'flex';
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            confirmationDialog.style.display = 'none';
+        });
+
+        startGameBtn.addEventListener('click', () => {
+            eliminationInstructionScreen.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            startRound(selectedInitialSpeed, PRACTICE_DURATION_SECONDS, true);
+        });
+        
+        startMainGameBtn.addEventListener('click', () => {
+            scoringRulesScreen.style.display = 'none';
+            gameContainer.style.display = 'flex';
+            startRound(selectedInitialSpeed, MAIN_GAME_DURATION_SECONDS, false);
+        });
+        
+        initializeGame();
+    </script>
+</body>
+</html>
